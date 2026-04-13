@@ -1,0 +1,64 @@
+Screen BatAnnotationScreen {
+
+    uses api: DataProvider
+    uses state: SessionState
+
+    Layout HSplit(ratio: [2, 1]) {
+
+        Panel(index: 0) {
+            Widget MatplotlibPlot {
+                source: api.get_spectrogram_image(state.current_sequence_ids)
+                style: semantic.plot_container_dark
+            }
+        }
+
+        Panel(index: 1) {
+            Layout VStack(spacing: tokens.spacing_md) {
+                
+                // Динамический блок: рендерим список секвенций
+                ForEach(items: state.sequence_data) as seq {
+
+                    Component FormSection {
+                        style: semantic.card_elevated
+                        header: $locale.section_sequence_title(seq.index)
+
+                        // Информационный виджет
+                        Widget InfoBadge {
+                            text: "$locale.ml_prediction: {seq.predicted_species} ({seq.confidence}%)"
+                            style: semantic.badge_ml_context
+                        }
+
+                        // Поля ввода
+                        Field Select {
+                            id: "expert_species_{seq.index}"
+                            label: $locale.field_species
+                            options: api.get_species_list()
+                            bind_value: state.forms[seq.index].expert_species
+                        }
+
+                        Field Select {
+                            id: "context_type_{seq.index}"
+                            label: $locale.field_behavior
+                            options: api.get_enum_options("SequenceContextType")
+                            bind_value: state.forms[seq.index].context_type
+                        }
+
+                        Field TextArea {
+                            id: "notes_{seq.index}"
+                            label: $locale.field_notes
+                            bind_value: state.forms[seq.index].notes
+                            style: semantic.input_resizable
+                        }
+                    }
+                }
+
+                // Кнопка действия (Логика вынесена!)
+                Action ButtonSubmit {
+                    label: $locale.btn_save
+                    style: semantic.button_primary
+                    on_click: api.save_all_sequences(state.forms)
+                }
+            }
+        }
+    }
+}
