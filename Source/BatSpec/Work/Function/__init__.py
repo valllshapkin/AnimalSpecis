@@ -285,19 +285,26 @@ class Function2D(Function):
         fdu, fda = self._d_first_a
         sdu, sda = self._d_sec___a
         return unit_mul(self._matrx_u, fdu, sdu), fw().sum(self._matrx_a ** 2) * fda * sda
-    
+
+
 class SpecFunc(Function2D):
-    _first_u: PintUnit = UREG.Unit("s")
-    _sec___u: PintUnit = UREG.Unit("Hz")
-    
+    _first_u: PintUnit = UREG.second # Явно указал UREG.second для ясности
+    _sec___u: PintUnit = UREG.hertz  # И UREG.hertz
+
     def __init__(self, matrix: Shaped[AnyArray, "T H"], time: Shaped[AnyArray, "T"], freq: Shaped[AnyArray, "H"], unit: PintUnit):
+        # Проверка соответствия размеров
+        if matrix.shape[0] != len(time):
+            raise ValueError(f"Размер матрицы по оси 0 ({matrix.shape[0]}) не совпадает с длиной оси времени ({len(time)})")
+        if matrix.shape[1] != len(freq):
+            raise ValueError(f"Размер матрицы по оси 1 ({matrix.shape[1]}) не совпадает с длиной оси частот ({len(freq)})")
+        
         self._matrx_a = matrix
         self._first_a = time
         self._sec___a = freq
         self._matrx_u = unit
 
     @classmethod
-    def from_Function2D(cls, func: Function2D):
+    def from_Function2D(cls, func: Function2D) -> Self:
         return cls(func._matrx_a, func._first_a, func._sec___a, func._matrx_u)
 
     @classmethod
@@ -307,6 +314,7 @@ class SpecFunc(Function2D):
         freq = fw().arange(shape_h)
         return cls(matrix=matrix, time=time, freq=freq, unit=unit)
 
+    # --- Свойства для доступа к данным (без изменений) ---
     @property
     def time(self) -> Tuple[PintUnit, Shaped[AnyArray, "T"]]:
         return self._first_u, self._first_a
@@ -339,9 +347,64 @@ class SpecFunc(Function2D):
     def df(self) -> Tuple[PintUnit, float]:
         return self._d_sec___a
 
+    # --- Методы сохранения/загрузки (без изменений) ---
     def saveNPZ(self, path: Union[str, Path]):
         Function2D.saveNPZ(self, path)
         
     @classmethod
     def loadNPZ(cls, path: Union[str, Path]):
         return cls.from_Function2D(Function2D.loadNPZ(path))
+
+    # --- НОВЫЕ МЕТОДЫ ИНТЕГРИРОВАНИЯ ---
+
+    def integrateOverTime(self) -> FreqFunc:
+        """
+        Интегрирует спектрограмму по оси времени, получая усредненный спектр (FreqFunc).
+        
+        Физический смысл: общая "площадь" сигнала на каждой частоте за весь период времени.
+        
+        :return: Объект FreqFunc, где ось - частота, а значения - результат интегрирования.
+        """
+        # Получаем шаг по времени (единица, значение)
+        dt_unit, dt_value = self.dt
+        
+        # Суммируем значения матрицы по оси времени (axis=0) и умножаем на шаг dt
+        integrated_values = fw().sum(self._matrx_a, axis=0) * dt_value
+        
+        # Вычисляем новую единицу измерения для значений
+        # Например, (Па/√Гц) * с  ->  Па*с/√Гц
+        new_unit = unit_mul(self._matrx_u, dt_unit)
+        
+        # Создаем и возвращаем новый FreqFunc
+        # Осью для него будет ось частот изначальной спектрограммы
+        return FreqFunc(
+            values=integrated_values,
+            axis=self._sec___a,  # ось частот
+            unit_values=new_unit
+        )
+
+    def integrateOverFreq(self) -> TimeFunc:
+        """
+        Интегрирует спектрограмму по оси частот, получая временной ход мощности (TimeFunc).
+        
+        Физический смысл: общая "площадь" сигнала во всем частотном диапазоне в каждый момент времени.
+        
+        :return: Объект TimeFunc, где ось - время, а значения - результат интегрирования.
+        """
+        # Получаем шаг по частоте (единица, значение)
+        df_unit, df_value = self.df
+        
+        # Суммируем значения матрицы по оси частот (axis=1) и умножаем на шаг df
+        integrated_values = fw().sum(self._matrx_a, axis=1) * df_value
+        
+        # Вычисляем новую единицу измерения для значений
+        # Например, (Па/√Гц) * Гц  ->  Па*√Гц (что соответствует размерности амплитуды)
+        new_unit = unit_mul(self._matrx_u, df_unit)
+        
+        # Создаем и возвращаем новый TimeFunc
+        # Осью для него будет ось времени изначальной спектрограммы
+        return TimeFunc(
+            values=integrated_values,
+            axis=self._first_a, # ось времени
+            unit_values=new_unit
+        )

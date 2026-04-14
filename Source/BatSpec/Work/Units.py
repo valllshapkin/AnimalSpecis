@@ -8,6 +8,10 @@ UREG = pint.UnitRegistry[float]()
 def unit_mul(*units: PintUnit) -> PintUnit:
     return reduce(operator.mul, units)
 
+def unit_devide(uintup: PintUnit, unitdown: PintUnit) -> PintUnit:
+    res = uintup / unitdown
+    if not isinstance(res, pint.Unit): raise RuntimeError()
+    return res
 
 # Определяем новую базовую размерность для уровня цифрового сигнала
 UREG.define('[digital_level] = 1') 
