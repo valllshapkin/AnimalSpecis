@@ -3,6 +3,7 @@ from BatSpec.Work.Units import UREG, unit_mul, unit_devide
 from BatSpec.Work.Context import fw
 from BatSpec.Work.Function import TimeFunc, FreqFunc, SpecFunc, AnyArray
 from BatSpec.Work.Spectral import makeComplexSpec, inverseComplexSpec
+from BatSpec.Work.ConvWindow import Window, WindowNorm, TEST_HANN_WINODW
 
 # =====================================================================
 # 1. Аналитические модели приборов (базовый класс + реализации)
@@ -89,7 +90,9 @@ class ResonanceMicModel(CalibrationModel):
 # 2. Главная функция: TimeFunc(FS) -> TimeFunc(Pa)
 # =====================================================================
 
-def applyСalibration(signal_fs: TimeFunc, model: CalibrationModel) -> TimeFunc:
+def applyСalibration(signal_fs: TimeFunc, model: CalibrationModel, 
+    window: Window = TEST_HANN_WINODW, overlap: float = 0.5, bins: int = 300
+) -> TimeFunc:
     """
     Переводит сырой цифровой сигнал (FS) в физические Паскали (Pa),
     учитывая частотно-зависимую калибровку (АЧХ) прибора.
@@ -100,7 +103,7 @@ def applyСalibration(signal_fs: TimeFunc, model: CalibrationModel) -> TimeFunc:
         raise ValueError(f"Ожидался сигнал в единицах FS, получено: {u}")
 
     # 2. Переводим в частотно-временную область (STFT)
-    complex_spec = makeComplexSpec(signal_fs)
+    complex_spec = makeComplexSpec(signal_fs, window=window, overlap=overlap, bins=bins)
 
     # 3. Генерируем калибровочную кривую по оси частот спектрограммы
     _, freq_axis = complex_spec.freq
@@ -122,4 +125,4 @@ def applyСalibration(signal_fs: TimeFunc, model: CalibrationModel) -> TimeFunc:
     )
 
     # 6. Обратный STFT -> временной сигнал в Паскалях
-    return inverseComplexSpec(calibrated_spec)
+    return inverseComplexSpec(calibrated_spec, window, overlap=overlap)

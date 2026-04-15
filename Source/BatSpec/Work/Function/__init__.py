@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Self, Tuple, Union
+from typing import Any, Callable, Self, Tuple, Union
 from jaxtyping import Shaped, Array
 from BatSpec.Work.SaveIntegral import SaveIntegralProtocol
 from BatSpec.Work.Units import UREG, PintUnit, unit_mul
@@ -279,12 +279,12 @@ class Function2D(Function):
     def SaveIntegralArea(self) -> Tuple[PintUnit, float]:
         fdu, fda = self._d_first_a
         sdu, sda = self._d_sec___a
-        return unit_mul(self._matrx_u, fdu, sdu), fw().sum(self._matrx_a) * fda * sda
+        return unit_mul(self._matrx_u, fdu, sdu), float(fw().sum(self._matrx_a) * fda * sda)
     
     def SaveIntegralEnergy(self) -> Tuple[PintUnit, float]:
         fdu, fda = self._d_first_a
         sdu, sda = self._d_sec___a
-        return unit_mul(self._matrx_u, fdu, sdu), fw().sum(self._matrx_a ** 2) * fda * sda
+        return unit_mul(self._matrx_u, self._matrx_u, fdu, sdu), float(fw().sum(self._matrx_a ** 2) * fda * sda)
 
 
 class SpecFunc(Function2D):
@@ -355,8 +355,6 @@ class SpecFunc(Function2D):
     def loadNPZ(cls, path: Union[str, Path]):
         return cls.from_Function2D(Function2D.loadNPZ(path))
 
-    # --- НОВЫЕ МЕТОДЫ ИНТЕГРИРОВАНИЯ ---
-
     def integrateOverTime(self) -> FreqFunc:
         """
         Интегрирует спектрограмму по оси времени, получая усредненный спектр (FreqFunc).
@@ -408,3 +406,8 @@ class SpecFunc(Function2D):
             axis=self._first_a, # ось времени
             unit_values=new_unit
         )
+    
+    def cloneApply(self, func: Callable[[AnyArray], AnyArray], new_unit: PintUnit):
+        return SpecFunc(func(self._matrx_a), self._first_a, self._sec___a, new_unit)
+
+    

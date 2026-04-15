@@ -3,16 +3,15 @@ from typing import Any, Dict, Callable
 from enum import Enum
 
 import numpy as np
-
+from pathlib import Path
+ScriptDir = Path(__file__).parent
 
 class WindowNorm(Enum):
     NONE   = "none"
     ENERGY = "energy"
     AREA   = "area"
 
-
 class Window:
-
     def __init__(self, func: Callable[[int], np.ndarray], time: float, norm: WindowNorm = WindowNorm.NONE):
         self.func = func
         self.time = time
@@ -47,3 +46,15 @@ def load_file_window(file: Path) -> Dict[str, Window]:
     if not duration: raise RuntimeError(f"EXPORT_DURATION не задан в {file}")
 
     return {name: Window(func=window, time=duration, norm=WindowNorm.ENERGY)}
+
+TEST_HANN_WINODW = load_file_window(ScriptDir / "__assets__" / "Hann.STFT.2.py")["Hann STFT 2ms"]
+
+class WindowNormMismatchError(Exception):
+    """Исключение, сигнализирующее о несовпадении ожидаемой и фактической нормировки окна."""
+
+    def __init__(self, expected: WindowNorm, actual: WindowNorm, message: str | None = None) -> None:
+        self.expected = expected
+        self.actual = actual
+        if message is None:
+            message = f"Несовпадение нормировки окна: ожидалась '{expected.value}', получена '{actual.value}'."
+        super().__init__(message)

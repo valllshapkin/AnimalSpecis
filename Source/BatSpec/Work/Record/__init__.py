@@ -1,8 +1,9 @@
 from BatSpec.Work.Context import fw
 from BatSpec.Work.Function import TimeFunc
 from BatSpec.Work.Units import UREG, PintUnit
+from BatSpec.Work.ConvWindow import Window, WindowNorm, WindowNormMismatchError
 from pathlib import Path
-from typing import Any
+from typing import Any, cast, Tuple
 
 type T = Any
 
@@ -10,12 +11,15 @@ def loadRecord(path: Path, unit: PintUnit = UREG.FS) -> 'TimeFunc':
     """Load audio file as TimeFunc (mono, float64)."""
     
     import numpy as np
-    import soundfile as sf
+    import soundfile as sf # type: ignore
 
     if not path.exists():
         raise FileNotFoundError(f"Файл не найден: {path}")
 
-    data, samplerate = sf.read(str(path), dtype='float64', always_2d=True)
+    data, samplerate = cast(
+        Tuple[np.typing.NDArray[np.float64], int], 
+        sf.read(str(path), dtype='float64', always_2d=True) # type: ignore
+    )
 
     # Force mono
     if data.ndim == 2:
@@ -84,7 +88,7 @@ def trimRecord(signal: TimeFunc, t_start: float = 0.0, t_end: float | None = Non
     )
 
 def resampleRecord(signal: TimeFunc, new_sr: int) -> TimeFunc:
-    from scipy.signal import resample_poly
+    from scipy.signal import resample_poly # type: ignore
     import numpy as np
     from math import gcd
 
@@ -124,7 +128,9 @@ def resampleRecord(signal: TimeFunc, new_sr: int) -> TimeFunc:
     down = orig_sr // g
 
     # Выполняем ресэмплинг
-    new_values = resample_poly(values, up=up, down=down, axis=0)
+    new_values = cast(np.typing.NDArray[Any], 
+        resample_poly(values, up=up, down=down, axis=0)
+    )
 
     # Создаём новый временной массив
     new_length = len(new_values)
@@ -138,14 +144,37 @@ def resampleRecord(signal: TimeFunc, new_sr: int) -> TimeFunc:
     )
 
 
+def localRMS(f: TimeFunc, window: Window) -> TimeFunc:
+    if window.norm != WindowNorm.AREA:
+        raise WindowNormMismatchError(WindowNorm.AREA, window.norm)
 
-
-
-
-
-
-
-
-
-
+    import numpy as np
     
+    value_unit, value_array = f.values
+    _, time_axis = f.time
+    win_array = window.get_array(f.sr)
+
+    # RMS = sqrt( mean(signal^2) ). mean(x) = convolve(x, window_norm_area)
+    rms_values = np.sqrt(np.convolve(value_array ** 2, win_array, mode="same"))
+
+    # RMS имеет ту же размерность, что и исходный сигнал
+    return TimeFunc(
+        values=rms_values,
+        axis=time_axis.copy(),
+        unit_values=value_unit
+    )
+
+def correctDC(f: TimeFunc) -> TimeFunc:
+    import numpy as np
+    
+    value_unit, value_array = f.values
+    _, time_axis = f.time
+
+    # Вычитание медианы не меняет размерность
+    corrected_values = value_array - np.median(value_array)
+    
+    return TimeFunc(
+        values=corrected_values,
+        axis=time_axis.copy(),
+        unit_values=value_unit
+    )

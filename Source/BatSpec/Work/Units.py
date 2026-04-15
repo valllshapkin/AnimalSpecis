@@ -13,6 +13,11 @@ def unit_devide(uintup: PintUnit, unitdown: PintUnit) -> PintUnit:
     if not isinstance(res, pint.Unit): raise RuntimeError()
     return res
 
+def unit_sqrt(unit: PintUnit) -> PintUnit:
+    res = unit**0.5
+    if not isinstance(res, pint.Unit): raise RuntimeError()
+    return res
+
 # Определяем новую базовую размерность для уровня цифрового сигнала
 UREG.define('[digital_level] = 1') 
 # Определяем саму единицу измерения "Full Scale"
