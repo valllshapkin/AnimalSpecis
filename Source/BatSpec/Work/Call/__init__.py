@@ -136,3 +136,10 @@ class Call:
             freq   = f_arr,
             unit   = unit
         )
+    
+
+def centrateCorpMass(corp: SpecFunc):
+    u, m = corp.values
+    _, t = corp.time
+    _, f = corp.freq 
+    return SpecFunc(m.copy(), t - np.average(t, weights=m.sum(axis=1)), f.copy(), u)

@@ -39,3 +39,4 @@ SPSL = makeLogDB(spec)
 
 from BatSpec.Work.Spectral import extractPeakContext, saveSpecToPNG
 saveSpecToPNG(extractPeakContext(SPSL), ScriptDir / "MYODAS_20230624_004924.debug.png")
+

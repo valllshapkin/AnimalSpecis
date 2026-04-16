@@ -354,3 +354,49 @@ def extractPeakContext(
 
     # 5. Вызываем ранее написанную функцию вырезания прямоугольника
     return cropSpecRect(spec, t_start=t_start, t_end=t_end, f_start=f_start, f_end=f_end)
+
+def addSpecToSpec(target: 'SpecFunc', source: 'SpecFunc') -> None:
+    """
+    Накладывает (прибавляет) source на target с учетом их физических осей (времени и частоты).
+    Автоматически обрезает source, если он выходит за границы target.
+    """
+    # Извлекаем матрицы
+    _, target_mat = target.values
+    _, source_mat = source.values
+    
+    # Извлекаем оси
+    _, target_time = target.time
+    _, target_freq = target.freq
+    _, source_time = source.time
+    _, source_freq = source.freq
+    
+    # Получаем шаги (dt, df) из target для расчета индексов
+    _, dt = target.dt
+    _, df = target.df
+    
+    # Вычисляем смещение начала source относительно target в индексах
+    t_offset = int(round(float(source_time[0] - target_time[0]) / float(dt)))
+    f_offset = int(round(float(source_freq[0] - target_freq[0]) / float(df)))
+    
+    # Размеры матриц
+    len_t, len_f = source_mat.shape
+    max_t, max_f = target_mat.shape
+    
+    # Находим границы области пересечения в координатах target
+    tgt_t_start = max(0, t_offset)
+    tgt_t_end   = min(max_t, t_offset + len_t)
+    tgt_f_start = max(0, f_offset)
+    tgt_f_end   = min(max_f, f_offset + len_f)
+    
+    # Если пересечения нет (source полностью вне target), прерываем
+    if tgt_t_start >= tgt_t_end or tgt_f_start >= tgt_f_end:
+        return
+        
+    # Вычисляем те же границы, но в локальных координатах source
+    src_t_start = tgt_t_start - t_offset
+    src_t_end   = tgt_t_end - t_offset
+    src_f_start = tgt_f_start - f_offset
+    src_f_end   = tgt_f_end - f_offset
+    
+    # Сложение матриц (inplace)
+    target_mat[tgt_t_start:tgt_t_end, tgt_f_start:tgt_f_end] += source_mat[src_t_start:src_t_end, src_f_start:src_f_end]
