@@ -38,6 +38,6 @@ if __name__ == "__main__":
     padding_hz = 10_000
     
 
-    saveSpecToPNG(central_call.toSpecFunc(
-        dt_step, df_step, blur_t, blur_f, padding_s=padding_s, padding_hz=padding_hz,  unit=UREG.Pa
-    ), ScriptDir / "myodas.png")
+    from BatSpec.QtApp.Visualize import update_spec2d, run_visualizer
+    update_spec2d("x", )
+    run_visualizer()

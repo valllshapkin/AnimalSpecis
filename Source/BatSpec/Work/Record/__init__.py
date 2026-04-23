@@ -178,3 +178,68 @@ def correctDC(f: TimeFunc) -> TimeFunc:
         axis=time_axis.copy(),
         unit_values=value_unit
     )
+
+
+def makeLog(f: TimeFunc, base: str = "natural", add_one: bool = False) -> TimeFunc:
+    """
+    Применяет логарифм к значениям TimeFunc.
+
+    Параметры
+    ----------
+    f : TimeFunc
+        Входной сигнал.
+    base : str, optional
+        Основание логарифма: 'natural' (по умолчанию), '10' или '2'.
+    add_one : bool, optional
+        Если True, вычисляет log(x + 1). Полезно для сигналов, содержащих нули, 
+        или для реализации log1p. По умолчанию False.
+
+    Возвращает
+    ----------
+    TimeFunc
+        Сигнал с логарифмированными значениями.
+
+    Raises
+    ------
+    ValueError
+        Если аргумент логарифма (x или x+1) <= 0 или указано неподдерживаемое основание.
+    """
+    import numpy as np
+
+    value_unit, value_array = f.values
+    _, time_axis = f.time
+
+    # Определяем смещение
+    offset = 1.0 if add_one else 0.0
+
+    # Проверка: аргумент логарифма должен быть строго положительным
+    if np.any(value_array + offset <= 0):
+        if add_one:
+            raise ValueError("makeLog: при add_one=True значения должны быть строго больше -1")
+        else:
+            raise ValueError("makeLog: значения должны быть строго положительными (или используйте add_one=True)")
+
+    # Выбор функции логарифма
+    if base == "natural":
+        # Используем np.log1p для лучшей точности, если add_one=True
+        log_func = np.log1p if add_one else np.log
+    elif base == "10":
+        log_func = np.log10
+    elif base == "2":
+        log_func = np.log2
+    else:
+        raise ValueError(f"Неподдерживаемое основание логарифма: {base}")
+
+    # Вычисление
+    if add_one and base == "natural":
+        log_values = log_func(value_array) # np.log1p уже учитывает +1
+    else:
+        log_values = log_func(value_array + offset)
+
+    new_unit = UREG.dimensionless
+
+    return TimeFunc(
+        values=log_values,
+        axis=time_axis.copy(),
+        unit_values=new_unit
+    )

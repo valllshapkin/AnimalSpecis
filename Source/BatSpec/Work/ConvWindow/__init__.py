@@ -31,7 +31,7 @@ class Window:
             case WindowNorm.AREA:   return row / np.sum(row)
 
 
-def load_file_window(file: Path) -> Dict[str, Window]:
+def load_file_window(file: Path, norm: WindowNorm = WindowNorm.ENERGY) -> Dict[str, Window]:
     namespace: Dict[str, Any] = {}
 
     with file.open("r", encoding="utf-8") as f:
@@ -45,9 +45,10 @@ def load_file_window(file: Path) -> Dict[str, Window]:
     if not window:   raise RuntimeError(f"EXPORT_WINDOW не задан в {file}")
     if not duration: raise RuntimeError(f"EXPORT_DURATION не задан в {file}")
 
-    return {name: Window(func=window, time=duration, norm=WindowNorm.ENERGY)}
+    return {name: Window(func=window, time=duration, norm=norm)}
 
 TEST_HANN_WINODW = load_file_window(ScriptDir / "__assets__" / "Hann.STFT.2.py")["Hann STFT 2ms"]
+TEST_HANN_AREA = load_file_window(ScriptDir / "__assets__" / "Hann.STFT.2.py", norm=WindowNorm.AREA)["Hann STFT 2ms"]
 
 class WindowNormMismatchError(Exception):
     """Исключение, сигнализирующее о несовпадении ожидаемой и фактической нормировки окна."""
@@ -58,3 +59,5 @@ class WindowNormMismatchError(Exception):
         if message is None:
             message = f"Несовпадение нормировки окна: ожидалась '{expected.value}', получена '{actual.value}'."
         super().__init__(message)
+
+TEST_BIG_WINDOW = load_file_window(ScriptDir / "__assets__" / "Hann.STFT.600.py")["Hann STFT 600ms"]

@@ -5,6 +5,7 @@ from BatSpec.Work.Record.Calibration import FlatResponseModel, applyСalibration
 from BatSpec.Work.SaveIntegral import SaveIntegralEnergy
 from BatSpec.Work.Spectral import makeSpec, makeLogDB
 from BatSpec.Work.ConvWindow import TEST_HANN_WINODW
+from BatSpec.QtApp.Visualize import update_spec2d, run_visualizer
 
 
 record_row = loadRecord(ScriptDir / "MYODAS_20230624_004924.wav")
@@ -22,7 +23,15 @@ record.values[0]: {record.values[0]}
 record.time[0]: {record.time[0]}
 """)
 
-spec = makeSpec(record, TEST_HANN_WINODW, overlap=0.9, bins=300)
+spec = makeSpec(record, TEST_HANN_WINODW, overlap=0.8, bins=300)
+import numpy as np
+
+print(spec._matrx_a.shape)
+np.save(str(ScriptDir / "TestSpec.npy"), spec._matrx_a)
+update_spec2d("spec", makeLogDB(spec))
+run_visualizer()
+
+
 print(f'''
 spec.values[0]: {spec.values[0]}
 spec.time[0]: {spec.time[0]}
@@ -37,6 +46,6 @@ SaveIntegralEnergy(record): {SaveIntegralEnergy(record)}
 SPSL = makeLogDB(spec)
 
 
-from BatSpec.Work.Spectral import extractPeakContext, saveSpecToPNG
-saveSpecToPNG(extractPeakContext(SPSL), ScriptDir / "MYODAS_20230624_004924.debug.png")
+# from BatSpec.Work.Spectral import extractPeakContext, saveSpecToPNG
+# saveSpecToPNG(extractPeakContext(SPSL), ScriptDir / "MYODAS_20230624_004924.debug.png")
 
